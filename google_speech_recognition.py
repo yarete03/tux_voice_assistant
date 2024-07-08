@@ -1,7 +1,7 @@
 import speech_recognition as sr
 from youtube_music_api_client import youtube_api_query
 from gtts_speech_to_voice import text_to_speech
-from pygame import mixer,init
+from pygame import mixer, init
 
 recognizer = sr.Recognizer()
 youtube_music_patterns = ['pon música de', 'pon la canción', 'pon']
