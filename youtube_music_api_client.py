@@ -1,6 +1,5 @@
 from googleapiclient.discovery import build
 from secrets import api_key
-from webbrowser import open
 
 
 def youtube_api_query(query):
@@ -13,7 +12,4 @@ def youtube_api_query(query):
     )
     search_response = search_request.execute()
     video_id = search_response["items"][0]["id"]["videoId"]
-    try:
-        open(f"https://music.youtube.com/watch?v={video_id}&autoplay=1", new=0, autoraise=False)
-    except Exception as e:
-        print(e)
+    return f"https://music.youtube.com/watch?v={video_id}&autoplay=1"

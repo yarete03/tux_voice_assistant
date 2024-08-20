@@ -61,7 +61,9 @@ def recognize_speech(query):
     elif any(youtube_music_pattern in query for youtube_music_pattern in youtube_music_patterns):
         query = next((query.replace(pattern, "") for pattern in youtube_music_patterns if pattern in query), query)
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
-        youtube_api_query(query)
+        youtube_url = youtube_api_query(query)
+        print(youtube_url)
+        subprocess.run(['/snap/bin/opera', youtube_url])
     elif any(who_made_song_pattern in query for who_made_song_pattern in who_made_song_patterns) or any(what_song_pattern in query for what_song_pattern in what_song_patterns):
         artist = subprocess.run(['/usr/bin/playerctl', 'metadata', 'artist'], capture_output=True).stdout.decode()
         song = subprocess.run(['/usr/bin/playerctl', 'metadata', 'title'], capture_output=True).stdout.decode()
