@@ -13,4 +13,7 @@ def youtube_api_query(query):
     )
     search_response = search_request.execute()
     video_id = search_response["items"][0]["id"]["videoId"]
-    open(f"https://music.youtube.com/watch?v={video_id}&autoplay=1", new=0)
+    try:
+        open(f"https://music.youtube.com/watch?v={video_id}&autoplay=1", new=0, autoraise=False)
+    except Exception as e:
+        print(e)
