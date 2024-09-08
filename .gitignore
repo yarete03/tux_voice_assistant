@@ -3,3 +3,7 @@
 .idea
 .idea/*
 secrets.py
+.whatsapp_cookies
+.whatsapp_cookies/*
+.whatsapp_cookies/.*
+logfilename.log
