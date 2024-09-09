@@ -12,6 +12,8 @@ logging.basicConfig(filename="logfilename.log", level=logging.DEBUG)
 
 next_song_patterns = ['salta la canción', 'pon la siguiente canción']
 previous_song_patterns = ['pon la canción anterior', 'pon la canción de antes', 'pon la de antes', "pon la anterior canción"]
+pause_patterns = ['para la canción', 'para la música']
+play_patterns = ['dale al', 'pon la música', 'vuelve a poner la música']
 youtube_music_patterns = ['pon música de', 'pon la canción', 'ponme', 'pon']
 who_made_song_patterns = ['de quién es', 'quién hizo', 'quién canta']
 what_song_patterns = ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta']
@@ -64,6 +66,10 @@ def recognize_speech(query, source, recognizer):
         next_song = run(['/home/yaret/polybar-scripts/polybar-scripts/player-mpris-simple/player-mpris-simple.sh'],  capture_output=True).stdout
         if actual_song == next_song:
             run(['/usr/bin/playerctl', 'previous'])
+    elif any(pause_pattern in query for pause_pattern in pause_patterns):
+        run(['/usr/bin/playerctl', 'pause'])
+    elif any(play_pattern in query for play_pattern in play_patterns):
+        run(['/usr/bin/playerctl', 'play'])
     elif any(youtube_music_pattern in query for youtube_music_pattern in youtube_music_patterns):
         query = next((query.replace(pattern, "") for pattern in youtube_music_patterns if pattern in query), query)
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
