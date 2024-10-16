@@ -7,3 +7,5 @@ secrets.py
 .whatsapp_cookies/*
 .whatsapp_cookies/.*
 logfilename.log
+contacts.vcf
+voice_assistant_custom_log.log
