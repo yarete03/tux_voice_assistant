@@ -1,6 +1,8 @@
 import dbus
 from subprocess import run
 import vobject
+from gtts_speech_to_voice import text_to_speech
+import speech_recognition as sr
 
 
 def get_modem_path():
@@ -36,35 +38,77 @@ def caller(modem_path, phone_number):
 
 
 def call_management(modem_path):
+    # Get active calls
+    call, bus = get_call(modem_path)
+
+    if call is None:
+        return
+
+    # Manage active call
+    state = call[1]['State']
+
+    if state == 'incoming':
+        line_identification = call[1]['LineIdentification']
+        contacts = read_vcf()
+        contact_name = [contact.fn.value for contact in contacts
+                        if hasattr(contact, 'tel') and line_identification in contact.tel.value.replace(' ', '')]
+        contact_name = contact_name[0]
+
+        call_path = call[0]
+        call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
+        voice_accept_decline_call(call_iface, contact_name)
+        notification_output = run(['/usr/bin/notify-send', '-A', 'Aceptar', '-A', 'Colgar', '-t', '15000',
+             f'"Llamada de {contact_name}"'], capture_output=True).stdout
+        if b'0' in notification_output:
+            call_iface.Answer()
+        elif b'1' in notification_output:
+            call_iface.Hangup()
+
+
+def voice_accept_decline_call(call_iface, contact_name):
+    text_to_speech(f'"Llamada de {contact_name}". ¿Aceptar o colgar?')
+    recognizer = sr.Recognizer()
+    recognizer.pause_threshold = 0.5
+    mic = sr.Microphone()
+    with mic as source:
+        try:
+            audio = recognizer.listen(source, timeout=1)
+            query = recognizer.recognize_google(audio, language="es-ES")
+            query = query.lower()
+            if query == "aceptar":
+                call_iface.Answer()
+            elif query == "colgar":
+                call_iface.Hangup()
+        except (sr.UnknownValueError, sr.exceptions.WaitTimeoutError):
+            pass
+
+
+
+def get_call(modem_path):
     # Connect to the system bus
     bus = dbus.SystemBus()
-
     # Get the VoiceCallManager interface of the modem
     voice_call_manager = bus.get_object('org.ofono', modem_path)
     voice_call_manager_iface = dbus.Interface(voice_call_manager, 'org.ofono.VoiceCallManager')
 
     # Get active calls
     calls = voice_call_manager_iface.GetCalls()
-
-    # Hang up each active call
     for call in calls:
-        state = call[1]['State']
+        return call, bus
+    return None, bus
 
-        if state == 'incoming':
-            line_identification = call[1]['LineIdentification']
-            contacts = read_vcf()
-            contact_name = [contact.fn.value for contact in contacts
-                            if hasattr(contact, 'tel') and line_identification in contact.tel.value.replace(' ', '')]
-            contact_name = contact_name[0]
 
-            call_path = call[0]
-            call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
-            notification_output = run(['/usr/bin/notify-send', '-A', 'Aceptar', '-A', 'Ignorar', '-A', 'Colgar', '-t', '15000',
-                 f'"Llamada de {contact_name}"'], capture_output=True).stdout
-            if b'0' in notification_output:
-                call_iface.Answer()
-            elif b'2' in notification_output:
-                call_iface.Hangup()
+def hang_out_call(modem_path):
+    # Get active calls
+    try:
+        call, bus = get_call(modem_path)
+        call_path = call[0]
+        call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
+        # Hang Out Call
+        call_iface.Hangup()
+        return True
+    except TypeError:
+        return False
 
 
 def read_vcf():

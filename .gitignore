@@ -2,10 +2,11 @@
 .venv/*
 .idea
 .idea/*
-secrets.py
+api_token.py
 .whatsapp_cookies
 .whatsapp_cookies/*
 .whatsapp_cookies/.*
 logfilename.log
 contacts.vcf
 voice_assistant_custom_log.log
+test.py

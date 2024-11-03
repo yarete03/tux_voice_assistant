@@ -6,7 +6,7 @@ from Levenshtein import distance
 from youtube_music_api_client import youtube_api_query
 from gtts_speech_to_voice import text_to_speech
 from pygame import mixer, init
-from subprocess import run
+from subprocess import run, Popen
 from whatsapp_sender import whatsapp_cookie_maker, whatsapp_sender
 from webbrowser import open as webbroser_open
 from multiprocessing import Process
@@ -22,12 +22,16 @@ who_made_song_patterns = ['de quién es', 'quién hizo', 'quién canta']
 what_song_patterns = ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta']
 whatsapp_send_patterns = ['enviar un whatsapp a', 'envía un whatsapp a', 'envíale un whatsapp a', 'manda un whatsapp a',
                           'mandale un whatsapp a', 'escribele un whatsapp a', 'escribe un whatsapp a']
+block_screen_patterns = ['bloquea la', 'bloquea el']
+power_off_pattern = 'apaga el'
 call_pattern = 'llama a'
 
 
 # tux_patters = ["hey tuxt", "itox", "hey tucson", "hey dux", "hey tux", "oye tux", "oye tuxt", "itunes", "hey tu",
 # "oye tucson", "oye dux", "oye lux", "hey jux", "el tux", "oye tuc", "oye tú", "oye"]
-voice_assistant_patters = ["alex", "alexa"]
+voice_assistant_patterns = ["alex", "alexa"]
+hang_out_patterns = [f'{voice_assistant_pattern} cuelga' for voice_assistant_pattern in voice_assistant_patterns]
+
 
 
 init()
@@ -45,8 +49,19 @@ def record_audio():
                 audio = recognizer.listen(source, timeout=1)
                 query = recognizer.recognize_google(audio, language="es-ES")
                 query = query.lower()
+                print(query)
                 try:
-                    if any(voice_assistant_patter in query for voice_assistant_patter in voice_assistant_patters):
+                    if any(hang_out_pattern in query for hang_out_pattern in hang_out_patterns):
+                        try:
+                            modem_path = phone_call_manager.get_modem_path()
+                            if modem_path is None:
+                                text_to_speech('No se detecta la llamada a colgar')
+                            else:
+                                if not phone_call_manager.hang_out_call(modem_path):
+                                    text_to_speech('No se detecta la llamada a colgar')
+                        except dbus_exception.DBusException:
+                            text_to_speech('No se detecta la llamada a colgar')
+                    elif any(voice_assistant_pattern in query for voice_assistant_pattern in voice_assistant_patterns):
                         listening_sound.play()
                         audio = recognizer.listen(source, timeout=3)
                         query = recognizer.recognize_google(audio, language="es-ES")
@@ -63,16 +78,16 @@ def record_audio():
                 pass
 
 
-# 'pass' statement used in each 'if' statement to not perform further checks for that query
+# 'return' statement used in each 'if' statement to not perform further checks for that query
 def playerctl_management(query):
     if any(next_song_pattern in query for next_song_pattern in next_song_patterns):
         run(['/usr/bin/playerctl', 'next'])
         return True
     elif any(previous_song_pattern in query for previous_song_pattern in previous_song_patterns):
-        actual_song = run(['/home/yaret/polybar-scripts/polybar-scripts/player-mpris-simple/player-mpris-simple.sh'],
+        actual_song = run(['/usr/bin/playerctl', 'metadata', 'title'],
                           capture_output=True).stdout
         run(['/usr/bin/playerctl', 'previous'])
-        next_song = run(['/home/yaret/polybar-scripts/polybar-scripts/player-mpris-simple/player-mpris-simple.sh'],
+        next_song = run(['/usr/bin/playerctl', 'metadata', 'title'],
                         capture_output=True).stdout
         if actual_song == next_song:
             run(['/usr/bin/playerctl', 'previous'])
@@ -152,6 +167,16 @@ def call_maker_manager(query):
     return False
 
 
+def display_management(query):
+    if any(block_screen_pattern in query for block_screen_pattern in block_screen_patterns):
+        Popen(['/usr/bin/i3lock-fancy'])
+        return True
+    elif power_off_pattern in query:
+        run(['/usr/sbin/poweroff'])
+        return True
+    return False
+
+
 def recognize_speech(query):
     if playerctl_management(query):
         return
@@ -159,6 +184,8 @@ def recognize_speech(query):
         return 
     # whatsapp_management(query, source, recognizer)
     if call_maker_manager(query):
+        return
+    if display_management(query):
         return
     error_sound.play()
 

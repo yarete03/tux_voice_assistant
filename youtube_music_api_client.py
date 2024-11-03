@@ -1,5 +1,5 @@
 from googleapiclient.discovery import build
-from secrets import api_key
+from api_token import api_key
 
 
 def youtube_api_query(query):
