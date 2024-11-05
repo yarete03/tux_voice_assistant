@@ -3,7 +3,7 @@ from subprocess import run
 import vobject
 from gtts_speech_to_voice import text_to_speech
 import speech_recognition as sr
-
+from multiprocessing import Process
 
 def get_modem_path():
     # Connect to the system bus
@@ -56,7 +56,8 @@ def call_management(modem_path):
 
         call_path = call[0]
         call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
-        voice_accept_decline_call(call_iface, contact_name)
+        voice_accept_decline = Process(target=voice_accept_decline_call, args=[call_iface, contact_name])
+        voice_accept_decline.start()
         notification_output = run(['/usr/bin/notify-send', '-A', 'Aceptar', '-A', 'Colgar', '-t', '15000',
              f'"Llamada de {contact_name}"'], capture_output=True).stdout
         if b'0' in notification_output:

@@ -10,6 +10,7 @@ from subprocess import run, Popen
 from whatsapp_sender import whatsapp_cookie_maker, whatsapp_sender
 from webbrowser import open as webbroser_open
 from multiprocessing import Process
+from datetime import datetime
 
 
 next_song_patterns = ['salta la canción', 'pon la siguiente canción']
@@ -25,6 +26,7 @@ whatsapp_send_patterns = ['enviar un whatsapp a', 'envía un whatsapp a', 'enví
 block_screen_patterns = ['bloquea la', 'bloquea el']
 power_off_pattern = 'apaga el'
 call_pattern = 'llama a'
+hour_pattern = 'qué hora es'
 
 
 # tux_patters = ["hey tuxt", "itox", "hey tucson", "hey dux", "hey tux", "oye tux", "oye tuxt", "itunes", "hey tu",
@@ -177,6 +179,15 @@ def display_management(query):
     return False
 
 
+def date_time_manager(query):
+    if hour_pattern in query:
+        current_time = datetime.now()
+        hour = current_time.hour
+        minute = current_time.minute
+        text_to_speech(f'Son las {hour} y {minute}')
+        return True
+
+
 def recognize_speech(query):
     if playerctl_management(query):
         return
@@ -186,6 +197,8 @@ def recognize_speech(query):
     if call_maker_manager(query):
         return
     if display_management(query):
+        return
+    if date_time_manager(query):
         return
     error_sound.play()
 
