@@ -34,8 +34,6 @@ hour_pattern = 'qué hora es'
 voice_assistant_patterns = ["alex", "alexa"]
 hang_out_patterns = [f'{voice_assistant_pattern} cuelga' for voice_assistant_pattern in voice_assistant_patterns]
 
-
-
 init()
 listening_sound = mixer.Sound("audio/mixkit-positive-interface-beep-221.wav")
 error_sound = mixer.Sound("audio/error-8-206492.mp3")
@@ -43,7 +41,7 @@ error_sound = mixer.Sound("audio/error-8-206492.mp3")
 
 def record_audio():
     recognizer = sr.Recognizer()
-    recognizer.pause_threshold=0.5
+    recognizer.pause_threshold = 0.5
     mic = sr.Microphone()
     with mic as source:
         while True:
@@ -154,8 +152,7 @@ def call_maker_manager(query):
         contact_name = query.replace(call_pattern, "")
         contact_name = contact_name.replace(' ', '')
         contacts = phone_call_manager.read_vcf()
-        closest_contact = min(contacts, key=lambda contact: distance(contact_name,
-                                                                  contact.fn.value.lower()))
+        closest_contact = min(contacts, key=lambda contact: distance(contact_name, contact.fn.value.lower()))
         closest_name = closest_contact.fn.value.lower()
         closest_phone_number = closest_contact.tel.value.replace(' ', '')
         text_to_speech(f'Llamando a {closest_name}')
@@ -223,9 +220,17 @@ def get_modem_path():
 
 
 def main():
-    process_hang_up_call_manager = Process(target=call_manager)
-    process_hang_up_call_manager.start()
-    record_audio()
+    while True:
+        if not run(["/usr/bin/pactl", "info"], text=False, capture_output=False).returncode:
+            try:
+                process_hang_up_call_manager = Process(target=call_manager)
+                process_hang_up_call_manager.start()
+                record_audio()
+            except OSError:
+                process_hang_up_call_manager.terminate()
+                sleep(1)
+        else:
+            sleep(1)
 
 
 if __name__ == "__main__":

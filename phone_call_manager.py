@@ -5,6 +5,7 @@ from gtts_speech_to_voice import text_to_speech
 import speech_recognition as sr
 from multiprocessing import Process
 
+
 def get_modem_path():
     # Connect to the system bus
     bus = dbus.SystemBus()
@@ -59,7 +60,7 @@ def call_management(modem_path):
         voice_accept_decline = Process(target=voice_accept_decline_call, args=[call_iface, contact_name])
         voice_accept_decline.start()
         notification_output = run(['/usr/bin/notify-send', '-A', 'Aceptar', '-A', 'Colgar', '-t', '15000',
-             f'"Llamada de {contact_name}"'], capture_output=True).stdout
+                                   f'"Llamada de {contact_name}"'], capture_output=True).stdout
         if b'0' in notification_output:
             call_iface.Answer()
         elif b'1' in notification_output:
@@ -82,7 +83,6 @@ def voice_accept_decline_call(call_iface, contact_name):
                 call_iface.Hangup()
         except (sr.UnknownValueError, sr.exceptions.WaitTimeoutError):
             pass
-
 
 
 def get_call(modem_path):
@@ -112,6 +112,7 @@ def hang_out_call(modem_path):
         return False
 
 
+# TODO Have to implement full compatibility with PBAP instead of updating contacts manually
 def read_vcf():
     with open('contacts.vcf', 'r') as vcf_file:
         contacts_data = vcf_file.read()
