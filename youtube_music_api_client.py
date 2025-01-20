@@ -1,9 +1,9 @@
 from googleapiclient.discovery import build
-from api_token import api_key
+from api_token import youtube_api_key
 
 
 def youtube_api_query(query):
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=youtube_api_key)
     search_request = youtube.search().list(
         part="id",
         q=query,
