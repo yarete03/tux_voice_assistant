@@ -12,3 +12,5 @@ voice_assistant_custom_log.log
 test.py
 ./test.py
 output.wav
+./temp_whisper.wav
+./porcupine/*

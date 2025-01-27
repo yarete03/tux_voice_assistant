@@ -1,0 +1,2 @@
+class SilenceTimeoutExceeded(Exception):
+    pass

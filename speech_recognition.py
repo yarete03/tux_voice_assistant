@@ -1,5 +1,3 @@
-import speech_recognition as sr
-import phone_call_manager
 from dbus import exceptions as dbus_exception
 from time import sleep
 from Levenshtein import distance
@@ -11,6 +9,16 @@ from whatsapp_sender import whatsapp_cookie_maker, whatsapp_sender
 from webbrowser import open as webbroser_open
 from multiprocessing import Process
 from datetime import datetime
+from api_token import porcupine_api_key
+import record_and_transcribe_whisper_custom_exceptions as custom_exceptions
+import phone_call_manager
+import pyaudio
+import struct
+import pvporcupine
+import wave
+import time
+import whisper
+import numpy as np
 
 
 next_song_patterns = ['salta la canción', 'pon la siguiente canción']
@@ -28,11 +36,9 @@ power_off_pattern = 'apaga el'
 call_pattern = 'llama a'
 hour_pattern = 'qué hora es'
 
-
-# tux_patters = ["hey tuxt", "itox", "hey tucson", "hey dux", "hey tux", "oye tux", "oye tuxt", "itunes", "hey tu",
-# "oye tucson", "oye dux", "oye lux", "hey jux", "el tux", "oye tuc", "oye tú", "oye"]
 voice_assistant_patterns = ["alex", "alexa"]
 hang_out_patterns = [f'{voice_assistant_pattern} cuelga' for voice_assistant_pattern in voice_assistant_patterns]
+hang_out_pattern = "cuelga"
 
 init()
 listening_sound = mixer.Sound("audio/mixkit-positive-interface-beep-221.wav")
@@ -40,45 +46,160 @@ error_sound = mixer.Sound("audio/error-8-206492.mp3")
 
 
 def record_audio():
-    recognizer = sr.Recognizer()
-    recognizer.pause_threshold = 0.5
-    mic = sr.Microphone()
-    with mic as source:
+    '''porcupine = Porcupine(
+        access_key=porcupine_api_key,
+        keyword_paths=['./porcupine/oye-penguin_es_linux_v3_0_0.ppn', './porcupine/Penguin_es_linux_v3_0_0.ppn'],
+        model_path='./porcupine/porcupine_params_es.pv',
+        sensitivities=[1, 1],
+        library_path='./porcupine/libpv_porcupine.so'
+    )'''
+    model = whisper.load_model("turbo")  # "tiny", "base", "small", "medium", etc.
+    porcupine = pvporcupine.create(
+        access_key=porcupine_api_key,
+        keywords=['picovoice', 'bumblebee'],
+        #keyword_paths=['./porcupine/oye-penguin_es_linux_v3_0_0.ppn', './porcupine/Penguin_es_linux_v3_0_0.ppn'],
+        #model_path='./porcupine/porcupine_params_es.pv',
+        library_path='./porcupine/libpv_porcupine.so'
+    )
+
+    pa = pyaudio.PyAudio()
+
+    # Open audio stream matching Porcupine's specs
+    audio_stream = pa.open(
+        rate=porcupine.sample_rate,
+        channels=1,
+        format=pyaudio.paInt16,
+        input=True,
+        frames_per_buffer=porcupine.frame_length
+    )
+    print("Listening for the Porcupine wake word...")
+
+    try:
         while True:
-            try:
-                audio = recognizer.listen(source, timeout=1)
-                query = recognizer.recognize_google(audio, language="es-ES")
-                query = query.lower()
-                print(query)
+            # Read a frame of audio
+            pcm = audio_stream.read(porcupine.frame_length, exception_on_overflow=False)
+            # Convert to int16
+            pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
+
+            # Process with Porcupine
+            result = porcupine.process(pcm)
+            if result >= 0:
                 try:
-                    if any(hang_out_pattern in query for hang_out_pattern in hang_out_patterns):
-                        try:
-                            modem_path = phone_call_manager.get_modem_path()
-                            if modem_path is None:
-                                text_to_speech('No se detecta la llamada a colgar')
-                            else:
-                                if not phone_call_manager.hang_out_call(modem_path):
-                                    text_to_speech('No se detecta la llamada a colgar')
-                        except dbus_exception.DBusException:
-                            text_to_speech('No se detecta la llamada a colgar')
-                    elif any(voice_assistant_pattern in query for voice_assistant_pattern in voice_assistant_patterns):
-                        listening_sound.play()
-                        audio = recognizer.listen(source, timeout=3)
-                        query = recognizer.recognize_google(audio, language="es-ES")
-                        query = query.lower()
-                        print(query)
-                        recognize_speech(query)
-                except sr.UnknownValueError as e:
-                    print(e, "Uknown vaule error", query)
+                    # Wake word detected!
+                    listening_sound.play()
+                    print("HIT")
+                    query = record_and_transcribe_whisper(model)
+                    query = query.lower()
+                    recognize_speech(query)
+                except custom_exceptions.SilenceTimeoutExceeded:
                     error_sound.play()
-                except sr.exceptions.WaitTimeoutError as e:
-                    print(e, "Wait Timeout Error")
-                    error_sound.play()
-            except (sr.UnknownValueError, sr.exceptions.WaitTimeoutError):
-                pass
+    except KeyboardInterrupt:
+        print("Porcupine listener stopped by user.")
+    finally:
+        audio_stream.stop_stream()
+        audio_stream.close()
+        pa.terminate()
+        porcupine.delete()
+
+    return True
 
 
-# 'return' statement used in each 'if' statement to not perform further checks for that query
+def record_and_transcribe_whisper(
+        model,
+        first_sound_timeout: float = 3.0,  # Tiempo máximo esperando la primera voz
+        silence_timeout: float = 1,  # Se detiene tras 0.5s de silencio continuo (una vez detectada voz)
+        sample_rate: int = 16000,
+        chunk_size: int = 1024,
+        silence_threshold: int = 200,  # Umbral RMS para detectar silencio/sonido
+) -> str:
+    pa = pyaudio.PyAudio()
+    stream = pa.open(
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=sample_rate,
+        input=True,
+        frames_per_buffer=chunk_size
+    )
+
+    frames = []
+    start_time = time.time()
+    spoken = False
+    silent_frames_count = 0
+    required_silent_frames = int(silence_timeout * sample_rate / chunk_size)
+
+    while True:
+        data = stream.read(chunk_size, exception_on_overflow=False)
+        frames.append(data)
+        # Calculate RMS using our NumPy approach
+        rms = calculate_rms(data, sample_width=2)
+        if not spoken:
+            # Still waiting for first voice
+            if rms > silence_threshold:
+                spoken = True
+                silent_frames_count = 0
+                print("Voz detectada; grabando hasta 0.5s de silencio...")
+            else:
+                # Check if we've exceeded the 3s wait
+                if time.time() - start_time >= first_sound_timeout:
+                    print("Timeout: no se detectó voz en 3s.")
+                    # Clean up
+                    stream.stop_stream()
+                    stream.close()
+                    pa.terminate()
+                    raise custom_exceptions.SilenceTimeoutExceeded("Timeout has been reached")
+        else:
+            # Once we've detected voice, record until 0.5s of silence
+            if rms < silence_threshold:
+                silent_frames_count += 1
+            else:
+                silent_frames_count = 0
+            if silent_frames_count >= required_silent_frames:
+                break
+
+    # Clean up PyAudio
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
+
+    # 3) Write the recorded audio to a temporary WAV
+    tmp_wav = "temp_whisper.wav"
+    wf = wave.open(tmp_wav, 'wb')
+    wf.setnchannels(1)
+    wf.setsampwidth(pa.get_sample_size(pyaudio.paInt16))
+    wf.setframerate(sample_rate)
+    wf.writeframes(b''.join(frames))
+    wf.close()
+
+    # 4) Transcribing audio with whisper
+    result = model.transcribe(tmp_wav, language="es")
+    text = result["text"].strip()
+    return text
+
+
+def calculate_rms(data: bytes, sample_width=2) -> float:
+    """
+    Computes RMS for 16-bit mono PCM data using NumPy.
+
+    Args:
+        data: Raw audio bytes.
+        sample_width: Number of bytes per sample (2 for 16-bit).
+    Returns:
+        A float representing the RMS amplitude.
+    """
+    # Number of 16-bit samples
+    num_samples = len(data) // sample_width
+
+    # Unpack bytes to Python integers: little-endian (<), signed short (h).
+    # e.g.: "<{num_samples}h"
+    format_str = "<{}h".format(num_samples)
+    samples = struct.unpack(format_str, data)
+
+    # Convert to NumPy array, then compute RMS
+    samples_array = np.array(samples, dtype=np.int16)
+    # Cast to float64 for numerical stability in mean of squares
+    return float(np.sqrt(np.mean(samples_array.astype(np.float64) ** 2)))
+
+
 def playerctl_management(query):
     if any(next_song_pattern in query for next_song_pattern in next_song_patterns):
         run(['/usr/bin/playerctl', 'next'])
@@ -176,7 +297,7 @@ def display_management(query):
     return False
 
 
-def date_time_manager(query):
+def date_time_management(query):
     if hour_pattern in query:
         current_time = datetime.now()
         hour = current_time.hour
@@ -185,17 +306,35 @@ def date_time_manager(query):
         return True
 
 
+def hang_out_management(query):
+    if hang_out_pattern in query:
+        try:
+            modem_path = phone_call_manager.get_modem_path()
+            if modem_path is None:
+                text_to_speech('No se detecta la llamada a colgar')
+            else:
+                if not phone_call_manager.hang_out_call(modem_path):
+                    text_to_speech('No se detecta la llamada a colgar')
+                else:
+                    text_to_speech('Llamada colgada')
+        except dbus_exception.DBusException:
+            text_to_speech('No se detecta la llamada a colgar')
+        return True
+
+
 def recognize_speech(query):
     if playerctl_management(query):
         return
     if youtube_music_manager(query):
-        return 
+        return
     # whatsapp_management(query, source, recognizer)
     if call_maker_manager(query):
         return
     if display_management(query):
         return
-    if date_time_manager(query):
+    if date_time_management(query):
+        return
+    if hang_out_management(query):
         return
     error_sound.play()
 

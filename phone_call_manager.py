@@ -1,9 +1,6 @@
 import dbus
 from subprocess import run
 import vobject
-from gtts_speech_to_voice import text_to_speech
-import speech_recognition as sr
-from multiprocessing import Process
 
 
 def get_modem_path():
@@ -57,32 +54,12 @@ def call_management(modem_path):
 
         call_path = call[0]
         call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
-        voice_accept_decline = Process(target=voice_accept_decline_call, args=[call_iface, contact_name])
-        voice_accept_decline.start()
         notification_output = run(['/usr/bin/notify-send', '-A', 'Aceptar', '-A', 'Colgar', '-t', '15000',
                                    f'"Llamada de {contact_name}"'], capture_output=True).stdout
         if b'0' in notification_output:
             call_iface.Answer()
         elif b'1' in notification_output:
             call_iface.Hangup()
-
-
-def voice_accept_decline_call(call_iface, contact_name):
-    text_to_speech(f'"Llamada de {contact_name}". ¿Aceptar o colgar?')
-    recognizer = sr.Recognizer()
-    recognizer.pause_threshold = 0.5
-    mic = sr.Microphone()
-    with mic as source:
-        try:
-            audio = recognizer.listen(source, timeout=1)
-            query = recognizer.recognize_google(audio, language="es-ES")
-            query = query.lower()
-            if query == "aceptar":
-                call_iface.Answer()
-            elif query == "colgar":
-                call_iface.Hangup()
-        except (sr.UnknownValueError, sr.exceptions.WaitTimeoutError):
-            pass
 
 
 def get_call(modem_path):
