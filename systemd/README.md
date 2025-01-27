@@ -1,25 +1,26 @@
 # **Use voice assistant as Linux service**
+⚠️ **Warning:** These instructions should be run with your regular user account on the system (usually the one with UID 1000 in `/etc/passwd`).  
+Do **not** run them as `root` or as any user whose UID is lower than 1000, as this process is not intended for those accounts.
 
-You should create the following directory path if it is not already created:
-
+You may need to create the following directory if it does not already exist:
 ~~~ bash
 mkdir -p ~/.config/systemd/user/
 ~~~
 
-Next you should copy the provided .service file on this folder to the directory we just tried to create:
+Next, copy the provided .service file from your cloned repository to the directory you just created:
 
-⚠️ **Note:** You should change the ${TUX_VOICE_ASSISTANT_PATH} variable with the path that contains the git cloned repo.
+**Note:** Replace ${TUX_VOICE_ASSISTANT_PATH} with the path to the cloned repository. 
 ~~~ bash
 mv ${TUX_VOICE_ASSISTANT_PATH}/systemd/voice_assistant.service ~/.config/systemd/user/
 ~~~
 
-Once we've finished with previous steps, we can launch our service:
+Once the above steps are complete, you can start the service:
 ~~~ bash
 systemctl --user daemon-reload
 systemctl --user start voice_assistant.service
 ~~~
 
-If you want it to be launched every time the PC is booted, you can enable the service:
+If you want it to launch automatically every time the system boots, you can enable the service:
 ~~~ bash
 systemctl --user enable --now voice_assistant.service
 ~~~
