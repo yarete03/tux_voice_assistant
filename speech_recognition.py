@@ -10,6 +10,7 @@ from webbrowser import open as webbroser_open
 from multiprocessing import Process
 from datetime import datetime
 from api_token import porcupine_api_key
+from os import remove
 import record_and_transcribe_whisper_custom_exceptions as custom_exceptions
 import phone_call_manager
 import pyaudio
@@ -28,7 +29,7 @@ pause_patterns = ['para la canción', 'para la música']
 play_patterns = ['dale al', 'pon la música', 'vuelve a poner la música']
 youtube_music_patterns = ['pon música de', 'pon la canción', 'ponme', 'pon']
 who_made_song_patterns = ['de quién es', 'quién hizo', 'quién canta']
-what_song_patterns = ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta']
+what_song_patterns = ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta', 'cuál es esta canción']
 whatsapp_send_patterns = ['enviar un whatsapp a', 'envía un whatsapp a', 'envíale un whatsapp a', 'manda un whatsapp a',
                           'mandale un whatsapp a', 'escribele un whatsapp a', 'escribe un whatsapp a']
 block_screen_patterns = ['bloquea la', 'bloquea el']
@@ -36,8 +37,6 @@ power_off_pattern = 'apaga el'
 call_pattern = 'llama a'
 hour_pattern = 'qué hora es'
 
-voice_assistant_patterns = ["alex", "alexa"]
-hang_out_patterns = [f'{voice_assistant_pattern} cuelga' for voice_assistant_pattern in voice_assistant_patterns]
 hang_out_pattern = "cuelga"
 
 init()
@@ -87,9 +86,10 @@ def record_audio():
                 try:
                     # Wake word detected!
                     listening_sound.play()
-                    print("HIT")
+                    print("Wake up word: HIT")
                     query = record_and_transcribe_whisper(model)
                     query = query.lower()
+                    print(f"Query: {query}")
                     recognize_speech(query)
                 except custom_exceptions.SilenceTimeoutExceeded:
                     error_sound.play()
@@ -173,6 +173,7 @@ def record_and_transcribe_whisper(
     # 4) Transcribing audio with whisper
     result = model.transcribe(tmp_wav, language="es")
     text = result["text"].strip()
+    remove(tmp_wav)
     return text
 
 

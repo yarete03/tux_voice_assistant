@@ -50,7 +50,10 @@ def call_management(modem_path):
         contacts = read_vcf()
         contact_name = [contact.fn.value for contact in contacts
                         if hasattr(contact, 'tel') and line_identification in contact.tel.value.replace(' ', '')]
-        contact_name = contact_name[0]
+        if len(contact_name) > 0:
+            contact_name = contact_name[0]
+        else:
+            contact_name = line_identification
 
         call_path = call[0]
         call_iface = dbus.Interface(bus.get_object('org.ofono', call_path), 'org.ofono.VoiceCall')
