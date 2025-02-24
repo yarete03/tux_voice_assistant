@@ -18,26 +18,26 @@ import struct
 import pvporcupine
 import wave
 import time
-import whisper
+from faster_whisper import WhisperModel
 import numpy as np
 
-
-next_song_patterns = ['salta la canción', 'pon la siguiente canción']
-previous_song_patterns = ['pon la canción anterior', 'pon la canción de antes', 'pon la de antes',
-                          "pon la anterior canción"]
-pause_patterns = ['para la canción', 'para la música']
-play_patterns = ['dale al', 'pon la música', 'vuelve a poner la música']
-youtube_music_patterns = ['pon música de', 'pon la canción', 'ponme', 'pon']
-who_made_song_patterns = ['de quién es', 'quién hizo', 'quién canta']
-what_song_patterns = ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta', 'cuál es esta canción']
-whatsapp_send_patterns = ['enviar un whatsapp a', 'envía un whatsapp a', 'envíale un whatsapp a', 'manda un whatsapp a',
-                          'mandale un whatsapp a', 'escribele un whatsapp a', 'escribe un whatsapp a']
-block_screen_patterns = ['bloquea la', 'bloquea el']
-power_off_pattern = 'apaga el'
-call_pattern = 'llama a'
-hour_pattern = 'qué hora es'
-
-hang_out_pattern = "cuelga"
+command_patters = {
+    "next_song_patterns": ['salta la canción', 'pon la siguiente canción'],
+    "previous_song_patterns": ['pon la canción anterior', 'pon la canción de antes', 'pon la de antes',
+                              "pon la anterior canción"],
+    "pause_patterns": ['para la canción', 'para la música'],
+    "play_patterns": ['dale al', 'pon la música', 'vuelve a poner la música'],
+    "youtube_music_patterns": ['ponme música de', 'pon música de', 'pon la canción', 'ponme', 'pon'],
+    "who_made_song_patterns": ['de quién es', 'quién hizo', 'quién canta'],
+    "what_song_patterns": ['cómo se llama', 'cuál es el nombre de', 'qué canción es esta', 'cuál es esta canción'],
+    "whatsapp_send_patterns": ['enviar un whatsapp a', 'envía un whatsapp a', 'envíale un whatsapp a', 'manda un whatsapp a',
+                              'mandale un whatsapp a', 'escribele un whatsapp a', 'escribe un whatsapp a'],
+    "block_screen_patterns": ['bloquea la', 'bloquea el'],
+    "power_off_pattern": 'apaga el',
+    "call_pattern": 'llama a',
+    "hour_pattern": 'qué hora es',
+    "hang_out_pattern": "cuelga",
+}
 
 init()
 listening_sound = mixer.Sound("audio/mixkit-positive-interface-beep-221.wav")
@@ -45,19 +45,11 @@ error_sound = mixer.Sound("audio/error-8-206492.mp3")
 
 
 def record_audio():
-    '''porcupine = Porcupine(
-        access_key=porcupine_api_key,
-        keyword_paths=['./porcupine/oye-penguin_es_linux_v3_0_0.ppn', './porcupine/Penguin_es_linux_v3_0_0.ppn'],
-        model_path='./porcupine/porcupine_params_es.pv',
-        sensitivities=[1, 1],
-        library_path='./porcupine/libpv_porcupine.so'
-    )'''
-    model = whisper.load_model("turbo")  # "tiny", "base", "small", "medium", etc.
+    model = WhisperModel("turbo", device="cuda", compute_type="float16")
     porcupine = pvporcupine.create(
         access_key=porcupine_api_key,
-        keywords=['picovoice', 'bumblebee'],
-        #keyword_paths=['./porcupine/oye-penguin_es_linux_v3_0_0.ppn', './porcupine/Penguin_es_linux_v3_0_0.ppn'],
-        #model_path='./porcupine/porcupine_params_es.pv',
+        keyword_paths=['./porcupine/asistente_es_linux_v3_0_0.ppn'],
+        model_path='./porcupine/porcupine_params_es.pv',
         library_path='./porcupine/libpv_porcupine.so'
     )
 
@@ -170,9 +162,17 @@ def record_and_transcribe_whisper(
     wf.writeframes(b''.join(frames))
     wf.close()
 
-    # 4) Transcribing audio with whisper
-    result = model.transcribe(tmp_wav, language="es")
-    text = result["text"].strip()
+     # 4) Transcribing audio with whisper
+    segments, info = model.transcribe(
+        tmp_wav,
+        language="es",
+        initial_prompt="Transcripción de comando de voz en español."
+                       f"Posibles comandos: {', '.join(', '.join(single_array) if type(single_array) is list else '' for single_array in command_patters.values())}",
+        temperature=0.2,  # More deterministic output
+        compression_ratio_threshold=2.4,  # Filter noisy audio
+    )
+    for segment in segments:
+        text = segment.text
     remove(tmp_wav)
     return text
 
@@ -202,10 +202,10 @@ def calculate_rms(data: bytes, sample_width=2) -> float:
 
 
 def playerctl_management(query):
-    if any(next_song_pattern in query for next_song_pattern in next_song_patterns):
+    if any(next_song_pattern in query for next_song_pattern in command_patters["next_song_patterns"]):
         run(['/usr/bin/playerctl', 'next'])
         return True
-    elif any(previous_song_pattern in query for previous_song_pattern in previous_song_patterns):
+    elif any(previous_song_pattern in query for previous_song_pattern in command_patters["previous_song_patterns"]):
         actual_song = run(['/usr/bin/playerctl', 'metadata', 'title'],
                           capture_output=True).stdout
         run(['/usr/bin/playerctl', 'previous'])
@@ -214,14 +214,14 @@ def playerctl_management(query):
         if actual_song == next_song:
             run(['/usr/bin/playerctl', 'previous'])
         return True
-    elif any(pause_pattern in query for pause_pattern in pause_patterns):
+    elif any(pause_pattern in query for pause_pattern in command_patters["pause_patterns"]):
         run(['/usr/bin/playerctl', 'pause'])
         return True
-    elif any(play_pattern in query for play_pattern in play_patterns):
+    elif any(play_pattern in query for play_pattern in command_patters["play_patterns"]):
         run(['/usr/bin/playerctl', 'play'])
         return True
-    elif (any(who_made_song_pattern in query for who_made_song_pattern in who_made_song_patterns) or
-          any(what_song_pattern in query for what_song_pattern in what_song_patterns)):
+    elif (any(who_made_song_pattern in query for who_made_song_pattern in command_patters["who_made_song_patterns"]) or
+          any(what_song_pattern in query for what_song_pattern in command_patters["what_song_patterns"])):
         artist = run(['/usr/bin/playerctl', 'metadata', 'artist'], capture_output=True).stdout.decode()
         song = run(['/usr/bin/playerctl', 'metadata', 'title'], capture_output=True).stdout.decode()
         text_to_speech(f'Estás escuchando {song}, de {artist}')
@@ -232,8 +232,8 @@ def playerctl_management(query):
 
 # TODO: Whatsapp ban you when you try to run a browser on headless mode
 def whatsapp_management(query, source, recognizer):
-    if any(whatsapp_send_pattern in query for whatsapp_send_pattern in whatsapp_send_patterns):
-        receiver = next((query.replace(whatsapp_send_pattern, "") for whatsapp_send_pattern in whatsapp_send_patterns
+    if any(whatsapp_send_pattern in query for whatsapp_send_pattern in command_patters["whatsapp_send_patterns"]):
+        receiver = next((query.replace(whatsapp_send_pattern, "") for whatsapp_send_pattern in command_patters["whatsapp_send_patterns"]
                          if whatsapp_send_pattern in query), query)
         text_to_speech(f'¿Qué le quieres decir a {receiver}?')
         listening_sound.play()
@@ -258,8 +258,8 @@ def whatsapp_management(query, source, recognizer):
 
 
 def youtube_music_manager(query):
-    if any(youtube_music_pattern in query for youtube_music_pattern in youtube_music_patterns):
-        query = next((query.replace(pattern, "") for pattern in youtube_music_patterns if pattern in query), query)
+    if any(youtube_music_pattern in query for youtube_music_pattern in command_patters["youtube_music_patterns"]):
+        query = next((query.replace(pattern, "") for pattern in command_patters["youtube_music_patterns"] if pattern in query), query)
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
         youtube_url = youtube_api_query(query)
         webbroser_open(youtube_url, new=0)
@@ -269,9 +269,9 @@ def youtube_music_manager(query):
 
 
 def call_maker_manager(query):
-    if call_pattern in query:
+    if command_patters["call_pattern"] in query:
         modem_path = phone_call_manager.get_modem_path()
-        contact_name = query.replace(call_pattern, "")
+        contact_name = query.replace(command_patters["call_pattern"], "")
         contact_name = contact_name.replace(' ', '')
         contacts = phone_call_manager.read_vcf()
         closest_contact = min(contacts, key=lambda contact: distance(contact_name, contact.fn.value.lower()))
@@ -289,17 +289,17 @@ def call_maker_manager(query):
 
 
 def display_management(query):
-    if any(block_screen_pattern in query for block_screen_pattern in block_screen_patterns):
+    if any(block_screen_pattern in query for block_screen_pattern in command_patters["block_screen_patterns"]):
         Popen(['/usr/bin/i3lock-fancy'])
         return True
-    elif power_off_pattern in query:
+    elif command_patters["power_off_pattern"] in query:
         run(['/usr/sbin/poweroff'])
         return True
     return False
 
 
 def date_time_management(query):
-    if hour_pattern in query:
+    if command_patters["hour_pattern"] in query:
         current_time = datetime.now()
         hour = current_time.hour
         minute = current_time.minute
@@ -308,7 +308,7 @@ def date_time_management(query):
 
 
 def hang_out_management(query):
-    if hang_out_pattern in query:
+    if command_patters["hang_out_pattern"] in query:
         try:
             modem_path = phone_call_manager.get_modem_path()
             if modem_path is None:

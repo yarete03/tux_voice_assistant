@@ -6,7 +6,7 @@ def youtube_api_query(query):
     youtube = build('youtube', 'v3', developerKey=youtube_api_key)
     search_request = youtube.search().list(
         part="id",
-        q=query,
+        q=query + " music",
         type="video",
         maxResults=1
     )
