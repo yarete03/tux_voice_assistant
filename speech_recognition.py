@@ -11,6 +11,8 @@ from multiprocessing import Process
 from datetime import datetime
 from api_token import porcupine_api_key
 from os import remove
+from fuzzywuzzy import fuzz
+from faster_whisper import WhisperModel
 import record_and_transcribe_whisper_custom_exceptions as custom_exceptions
 import phone_call_manager
 import pyaudio
@@ -18,7 +20,6 @@ import struct
 import pvporcupine
 import wave
 import time
-from faster_whisper import WhisperModel
 import numpy as np
 
 command_patters = {
@@ -202,26 +203,24 @@ def calculate_rms(data: bytes, sample_width=2) -> float:
 
 
 def playerctl_management(query):
-    if any(next_song_pattern in query for next_song_pattern in command_patters["next_song_patterns"]):
+    if fuzzy_match(command_patters["next_song_patterns"], query):
         run(['/usr/bin/playerctl', 'next'])
         return True
-    elif any(previous_song_pattern in query for previous_song_pattern in command_patters["previous_song_patterns"]):
-        actual_song = run(['/usr/bin/playerctl', 'metadata', 'title'],
-                          capture_output=True).stdout
+    elif fuzzy_match(command_patters["previous_song_patterns"], query):
+        actual_song = run(['/usr/bin/playerctl', 'metadata', 'title'], capture_output=True).stdout
         run(['/usr/bin/playerctl', 'previous'])
-        next_song = run(['/usr/bin/playerctl', 'metadata', 'title'],
-                        capture_output=True).stdout
+        next_song = run(['/usr/bin/playerctl', 'metadata', 'title'], capture_output=True).stdout
         if actual_song == next_song:
             run(['/usr/bin/playerctl', 'previous'])
         return True
-    elif any(pause_pattern in query for pause_pattern in command_patters["pause_patterns"]):
+    elif fuzzy_match(command_patters["pause_patterns"], query):
         run(['/usr/bin/playerctl', 'pause'])
         return True
-    elif any(play_pattern in query for play_pattern in command_patters["play_patterns"]):
+    elif fuzzy_match(command_patters["play_patterns"], query):
         run(['/usr/bin/playerctl', 'play'])
         return True
-    elif (any(who_made_song_pattern in query for who_made_song_pattern in command_patters["who_made_song_patterns"]) or
-          any(what_song_pattern in query for what_song_pattern in command_patters["what_song_patterns"])):
+    elif (fuzzy_match(command_patters["who_made_song_patterns"], query) or
+          fuzzy_match(command_patters["what_song_patterns"], query)):
         artist = run(['/usr/bin/playerctl', 'metadata', 'artist'], capture_output=True).stdout.decode()
         song = run(['/usr/bin/playerctl', 'metadata', 'title'], capture_output=True).stdout.decode()
         text_to_speech(f'Estás escuchando {song}, de {artist}')
@@ -232,7 +231,7 @@ def playerctl_management(query):
 
 # TODO: Whatsapp ban you when you try to run a browser on headless mode
 def whatsapp_management(query, source, recognizer):
-    if any(whatsapp_send_pattern in query for whatsapp_send_pattern in command_patters["whatsapp_send_patterns"]):
+    if fuzzy_match(command_patters["whatsapp_send_patterns"], query):
         receiver = next((query.replace(whatsapp_send_pattern, "") for whatsapp_send_pattern in command_patters["whatsapp_send_patterns"]
                          if whatsapp_send_pattern in query), query)
         text_to_speech(f'¿Qué le quieres decir a {receiver}?')
@@ -258,7 +257,7 @@ def whatsapp_management(query, source, recognizer):
 
 
 def youtube_music_manager(query):
-    if any(youtube_music_pattern in query for youtube_music_pattern in command_patters["youtube_music_patterns"]):
+    if fuzzy_match(command_patters["youtube_music_patterns"], query):
         query = next((query.replace(pattern, "") for pattern in command_patters["youtube_music_patterns"] if pattern in query), query)
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
         youtube_url = youtube_api_query(query)
@@ -269,10 +268,9 @@ def youtube_music_manager(query):
 
 
 def call_maker_manager(query):
-    if command_patters["call_pattern"] in query:
+    if fuzzy_match(command_patters["call_pattern"], query):
         modem_path = phone_call_manager.get_modem_path()
-        contact_name = query.replace(command_patters["call_pattern"], "")
-        contact_name = contact_name.replace(' ', '')
+        contact_name = query.replace(command_patters["call_pattern"], "").strip()
         contacts = phone_call_manager.read_vcf()
         closest_contact = min(contacts, key=lambda contact: distance(contact_name, contact.fn.value.lower()))
         closest_name = closest_contact.fn.value.lower()
@@ -289,10 +287,10 @@ def call_maker_manager(query):
 
 
 def display_management(query):
-    if any(block_screen_pattern in query for block_screen_pattern in command_patters["block_screen_patterns"]):
+    if fuzzy_match(command_patters["block_screen_patterns"], query):
         Popen(['/usr/bin/i3lock-fancy'])
         return True
-    elif command_patters["power_off_pattern"] in query:
+    elif fuzzy_match(command_patters["power_off_pattern"], query):
         run(['/usr/sbin/poweroff'])
         return True
     return False
@@ -308,7 +306,7 @@ def date_time_management(query):
 
 
 def hang_out_management(query):
-    if command_patters["hang_out_pattern"] in query:
+    if fuzzy_match(command_patters["hang_out_pattern"], query):
         try:
             modem_path = phone_call_manager.get_modem_path()
             if modem_path is None:
@@ -322,7 +320,7 @@ def hang_out_management(query):
             text_to_speech('No se detecta la llamada a colgar')
         return True
 
-
+    
 def recognize_speech(query):
     if playerctl_management(query):
         return
@@ -357,6 +355,12 @@ def get_modem_path():
         modem_path = phone_call_manager.get_modem_path()
         sleep(30)
     return modem_path
+
+
+def fuzzy_match(patterns, query, threshold=80):
+    if isinstance(patterns, str):
+        patterns = [patterns]
+    return any(fuzz.partial_ratio(pattern, query) >= threshold for pattern in patterns)
 
 
 def main():
