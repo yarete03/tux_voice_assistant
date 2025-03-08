@@ -15,3 +15,4 @@ output.wav
 ./temp_whisper.wav
 ./porcupine/*
 __pycache__/*
+porcupine/*
