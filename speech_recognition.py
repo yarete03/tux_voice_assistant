@@ -261,7 +261,10 @@ def youtube_music_manager(query):
         query = next((query.replace(pattern, "") for pattern in command_patters["youtube_music_patterns"] if pattern in query), query)
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
         youtube_url = youtube_api_query(query)
-        webbroser_open(youtube_url, new=0)
+        if youtube_url:
+            webbroser_open(youtube_url, new=0)
+        else:
+            text_to_speech(f"No se ha podido reproducir la canción solicitada. Pruebe en otro momento")
         return True
 
     return False

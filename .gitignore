@@ -14,3 +14,4 @@ test.py
 output.wav
 ./temp_whisper.wav
 ./porcupine/*
+__pycache__/*
