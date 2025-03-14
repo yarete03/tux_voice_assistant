@@ -1,20 +1,12 @@
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from api_token import youtube_api_key
+from api_token import ytmusic_oauth_client_id, ytmusic_oauth_client_secret
+from ytmusicapi import YTMusic, OAuthCredentials
 
 
 def youtube_api_query(query):
-    try:
-        youtube = build('youtube', 'v3', developerKey=youtube_api_key)
-        search_request = youtube.search().list(
-            part="id",
-            q=query + " music",
-            type="video",
-            maxResults=1
-        )
-        search_response = search_request.execute()
-        video_id = search_response["items"][0]["id"]["videoId"]
-        return f"https://music.youtube.com/watch?v={video_id}&autoplay=1"
-    except HttpError as error:
-        print(f'Error: {error}')
-        return False
+    ytmusic = YTMusic('oauth.json', oauth_credentials=OAuthCredentials(client_id=ytmusic_oauth_client_id,
+                                                                       client_secret=ytmusic_oauth_client_secret))
+    test = ytmusic.get_search_suggestions(query)[0]
+    search_results = ytmusic.search(test, filter="songs")[0]
+    print(search_results)
+    video_id = search_results['videoId']
+    return f"https://music.youtube.com/watch?v={video_id}&autoplay=1"

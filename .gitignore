@@ -16,3 +16,4 @@ output.wav
 ./porcupine/*
 __pycache__/*
 porcupine/*
+oauth.json
