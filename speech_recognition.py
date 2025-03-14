@@ -36,7 +36,7 @@ command_patters = {
     "block_screen_patterns": ['bloquea la', 'bloquea el'],
     "power_off_pattern": 'apaga el',
     "call_pattern": 'llama a',
-    "hour_pattern": 'qué hora es',
+    "hour_patterns": ['qué hora es', 'que hora es'],
     "hang_out_pattern": "cuelga",
 }
 
@@ -262,6 +262,7 @@ def youtube_music_manager(query):
         text_to_speech(f"Vale, voy a intentar reproducir {query}")
         youtube_url = youtube_api_query(query)
         if youtube_url:
+            run(['/usr/bin/playerctl', 'pause'])
             webbroser_open(youtube_url, new=0)
         else:
             text_to_speech(f"No se ha podido reproducir la canción solicitada. Pruebe en otro momento")
@@ -300,7 +301,7 @@ def display_management(query):
 
 
 def date_time_management(query):
-    if command_patters["hour_pattern"] in query:
+    if fuzzy_match(command_patters["hour_patterns"], query):
         current_time = datetime.now()
         hour = current_time.hour
         minute = current_time.minute
