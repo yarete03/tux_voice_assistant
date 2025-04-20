@@ -4,16 +4,9 @@ import vobject
 
 
 def get_modem_path():
-    # Connect to the system bus
     bus = dbus.SystemBus()
-
-    # Get the ofono Manager object
     manager = bus.get_object('org.ofono', '/')
-
-    # Get the Manager interface
     manager_iface = dbus.Interface(manager, 'org.ofono.Manager')
-
-    # List modems
     modems = manager_iface.GetModems()
 
     # Look for the modem with Bluetooth (hfp)

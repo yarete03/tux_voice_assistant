@@ -37,7 +37,6 @@ command_patters = {
     "power_off_pattern": 'apaga el',
     "call_pattern": 'llama a',
     "hour_patterns": ['qué hora es', 'que hora es'],
-    "hang_out_pattern": "cuelga",
 }
 
 init()
@@ -49,9 +48,9 @@ def record_audio():
     model = WhisperModel("turbo", device="cuda", compute_type="float16")
     porcupine = pvporcupine.create(
         access_key=porcupine_api_key,
-        keyword_paths=['./porcupine/asistente_es_linux_v3_0_0.ppn'],
-        model_path='./porcupine/porcupine_params_es.pv',
-        library_path='./porcupine/libpv_porcupine.so'
+        keyword_paths=['./porcupine/asistente_es_linux_v3_0_0.ppn', './porcupine/cuelga_es_linux_v3_0_0.ppn'], # Custom download for each user of porcupine (https://console.picovoice.ai/ppn)
+        model_path='./porcupine/porcupine_params_es.pv', # https://github.com/Picovoice/porcupine/tree/master/lib/common
+        library_path='./porcupine/libpv_porcupine.so' # https://github.com/Picovoice/porcupine/tree/master/lib/linux/x86_64
     )
 
     pa = pyaudio.PyAudio()
@@ -75,7 +74,8 @@ def record_audio():
 
             # Process with Porcupine
             result = porcupine.process(pcm)
-            if result >= 0:
+
+            if result == 0:
                 try:
                     # Wake word detected!
                     listening_sound.play()
@@ -86,6 +86,9 @@ def record_audio():
                     recognize_speech(query)
                 except custom_exceptions.SilenceTimeoutExceeded:
                     error_sound.play()
+            elif result == 1:
+                hang_out_management()
+                
     except KeyboardInterrupt:
         print("Porcupine listener stopped by user.")
     finally:
@@ -307,22 +310,21 @@ def date_time_management(query):
         minute = current_time.minute
         text_to_speech(f'Son las {hour} y {minute}')
         return True
+    return False
 
 
-def hang_out_management(query):
-    if fuzzy_match(command_patters["hang_out_pattern"], query):
-        try:
-            modem_path = phone_call_manager.get_modem_path()
-            if modem_path is None:
+def hang_out_management():
+    try:
+        modem_path = phone_call_manager.get_modem_path()
+        if modem_path is None:
+            text_to_speech('No se detecta la llamada a colgar')
+        else:
+            if not phone_call_manager.hang_out_call(modem_path):
                 text_to_speech('No se detecta la llamada a colgar')
             else:
-                if not phone_call_manager.hang_out_call(modem_path):
-                    text_to_speech('No se detecta la llamada a colgar')
-                else:
-                    text_to_speech('Llamada colgada')
-        except dbus_exception.DBusException:
-            text_to_speech('No se detecta la llamada a colgar')
-        return True
+                text_to_speech('Llamada colgada')
+    except dbus_exception.DBusException:
+        text_to_speech('No se detecta la llamada a colgar')
 
     
 def recognize_speech(query):
@@ -336,8 +338,6 @@ def recognize_speech(query):
     if display_management(query):
         return
     if date_time_management(query):
-        return
-    if hang_out_management(query):
         return
     error_sound.play()
 
