@@ -10,32 +10,32 @@ A Spanish language voice assistant for Linux that provides hands-free control of
 Tux Voice Assistant is a comprehensive voice-controlled system that offers the following capabilities:
 
 ### Core Features
-- **Wake Word Detection**: Uses Porcupine AI for "asistente" and "cuelga" wake word detection [1](#0-0) 
-- **Speech Recognition**: Implements Whisper AI for accurate Spanish speech transcription [2](#0-1) 
-- **Text-to-Speech**: Converts responses to speech using Google TTS in Spanish [3](#0-2) 
+- **Wake Word Detection**: Uses Porcupine AI for "asistente" and "cuelga" wake word detection 
+- **Speech Recognition**: Implements Whisper AI for accurate Spanish speech transcription
+- **Text-to-Speech**: Converts responses to speech using Google TTS in Spanish
 
 ### Media Control
-- **Music Playback Control**: Next/previous track, play/pause via playerctl [4](#0-3) 
-- **YouTube Music Integration**: Search and play songs directly from YouTube Music [5](#0-4) 
-- **Song Information**: Get current artist and track information [6](#0-5) 
+- **Music Playback Control**: Next/previous track, play/pause via playerctl
+- **YouTube Music Integration**: Search and play songs directly from YouTube Music
+- **Song Information**: Get current artist and track information 
 
 ### Communication Features
-- **WhatsApp Messaging**: Send messages via WhatsApp Web automation [7](#0-6) 
-- **Phone Call Management**: Make, answer, and hang up calls via Bluetooth/HFP [8](#0-7) 
+- **WhatsApp Messaging**: Send messages via WhatsApp Web automation
+- **Phone Call Management**: Make, answer, and hang up calls via Bluetooth/HFP
 
 ### System Control
-- **Screen Lock**: Lock the screen using i3lock-fancy [9](#0-8) 
-- **System Shutdown**: Power off the system [10](#0-9) 
-- **Time Information**: Get current time via voice query [11](#0-10) 
+- **Screen Lock**: Lock the screen using i3lock-fancy  
+- **System Shutdown**: Power off the system
+- **Time Information**: Get current time via voice query
 
 ## Voice Commands (Spanish)
 
-The assistant recognizes various Spanish command patterns: [12](#0-11) 
+The assistant recognizes various Spanish command patterns:
 
 ## Dependencies
 
 ### Python Dependencies
-Install from requirements.txt: [13](#0-12) 
+Install from requirements.txt:
 
 ```bash
 pip install -r requirements.txt
@@ -52,19 +52,19 @@ Key Python packages include:
 ### System Dependencies
 
 **Audio System:**
-- PulseAudio (`pactl` command) [14](#0-13) 
+- PulseAudio (`pactl` command)
 
 **Media Control:**
-- `playerctl` - Media player control [15](#0-14) 
+- `playerctl` - Media player control
 
 **System Control:**
-- `i3lock-fancy` - Screen locking [16](#0-15) 
-- `poweroff` utility [17](#0-16) 
-- `notify-send` - Desktop notifications [18](#0-17) 
+- `i3lock-fancy` - Screen locking
+- `poweroff` utility 
+- `notify-send` - Desktop notifications
 
 **Phone Integration:**
-- oFono daemon for Bluetooth phone connectivity [19](#0-18) 
-- D-Bus system bus access [20](#0-19) 
+- oFono daemon for Bluetooth phone connectivity
+- D-Bus system bus access 
 
 ### Third-Party Services
 # Tux Voice Assistant
@@ -74,7 +74,7 @@ Key Python packages include:
 
 ### Third-Party Services
 
-**YouTube Music Integration:** [10](#0-9) 
+**YouTube Music Integration:** 
 - YouTube Music API OAuth credentials
 - Requires `oauth.json` file and API tokens in `api_token.py`
 
@@ -82,7 +82,7 @@ Key Python packages include:
 - WhatsApp Web access (browser-based)
 - Persistent browser session storage
 
-**Phone Integration:** [11](#0-10) 
+**Phone Integration:** 
 - Bluetooth phone with HFP support
 - `contacts.vcf` file for contact resolution
 
@@ -103,13 +103,13 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configure Porcupine Wake Word Detection
-Download custom wake word models from [Picovoice Console](https://console.picovoice.ai/ppn): [12](#0-11) 
+Download custom wake word models from [Picovoice Console](https://console.picovoice.ai/ppn):
 - Place `asistente_es_linux_v3_0_0.ppn` in `./porcupine/`
 - Place `cuelga_es_linux_v3_0_0.ppn` in `./porcupine/`
 - Download `porcupine_params_es.pv` and `libpv_porcupine.so`
 
 ### 4. Configure API Tokens
-Create `api_token.py` with: [13](#0-12) 
+Create `api_token.py` with:
 ```python
 porcupine_api_key = "your_porcupine_api_key"
 ytmusic_oauth_client_id = "your_youtube_music_client_id"
@@ -117,14 +117,14 @@ ytmusic_oauth_client_secret = "your_youtube_music_client_secret"
 ```
 
 ### 5. Configure YouTube Music
-- Set up OAuth credentials and save as `oauth.json` [14](#0-13) 
+- Set up OAuth credentials and save as `oauth.json`
 
 ### 6. Configure Phone Integration (Optional)
 - Place contacts in `contacts.vcf` format
 - Ensure Ofono is running and Bluetooth phone is paired
 
 ### 7. Set Up Audio Files
-Place audio feedback files in `./audio/`: [15](#0-14) 
+Place audio feedback files in `./audio/`:
 - `mixkit-positive-interface-beep-221.wav`
 - `error-8-206492.mp3`
 
@@ -133,23 +133,23 @@ Place audio feedback files in `./audio/`: [15](#0-14)
 python speech_recognition.py
 ```
 
-The system runs continuously, listening for the wake word "asistente" followed by voice commands in Spanish. [16](#0-15) 
+The system runs continuously, listening for the wake word "asistente" followed by voice commands in Spanish.
 
 ## Notes
 
-The system is designed for Spanish voice commands and requires CUDA-compatible hardware for optimal Whisper performance. [17](#0-16)  WhatsApp integration uses browser automation which may be subject to WhatsApp's terms of service. Phone functionality requires a Bluetooth-connected phone with HFP support and the Ofono telephony stack.
+The system is designed for Spanish voice commands and requires CUDA-compatible hardware for optimal Whisper performance. WhatsApp integration uses browser automation which may be subject to WhatsApp's terms of service. Phone functionality requires a Bluetooth-connected phone with HFP support and the Ofono telephony stack.
 
 Wiki pages you might want to explore:
 - [Overview (yarete03/tux_voice_assistant)](/wiki/yarete03/tux_voice_assistant#1)
 - [External Service Integrations (yarete03/tux_voice_assistant)](/wiki/yarete03/tux_voice_assistant#3)
 
 **Porcupine AI (Picovoice):**
-- API key required [21](#0-20) 
-- Custom wake word models needed [22](#0-21) 
+- API key required
+- Custom wake word models needed
 
 **YouTube Music:**
-- OAuth credentials required [23](#0-22) 
-- OAuth configuration file (`oauth.json`) [24](#0-23) 
+- OAuth credentials required
+- OAuth configuration file (`oauth.json`)
 
 ## Installation and Configuration
 
@@ -195,7 +195,7 @@ playwright install
 
 ### 4. API Configuration
 
-Create `api_token.py` file: [21](#0-20) 
+Create `api_token.py` file:
 
 ```python
 # Porcupine API key
@@ -213,7 +213,7 @@ ytmusic_oauth_client_secret = "YOUR_YOUTUBE_MUSIC_CLIENT_SECRET"
 
 ### 6. Audio Files
 
-Create `audio/` directory with sound files: [25](#0-24) 
+Create `audio/` directory with sound files:
 ```
 ./audio/
 ├── mixkit-positive-interface-beep-221.wav
@@ -222,7 +222,7 @@ Create `audio/` directory with sound files: [25](#0-24)
 
 ### 7. Contacts Configuration
 
-Create `contacts.vcf` file with phone contacts in VCF format [26](#0-25) 
+Create `contacts.vcf` file with phone contacts in VCF format
 
 ### 8. Phone Integration (Optional)
 
@@ -250,20 +250,20 @@ The assistant will:
 
 ### First-Time Setup
 
-1. **WhatsApp Web**: On first WhatsApp command, the assistant will open a browser for QR code scanning [27](#0-26) 
+1. **WhatsApp Web**: On first WhatsApp command, the assistant will open a browser for QR code scanning
 2. **Phone Pairing**: Connect your Bluetooth phone before using call features
 3. **Audio Permissions**: Ensure microphone access is granted
 
 ## Security Considerations
 
-- **WhatsApp Cookies**: Stored locally in `.whatsapp_cookies` directory [28](#0-27) 
+- **WhatsApp Cookies**: Stored locally in `.whatsapp_cookies` directory
 - **API Keys**: Keep `api_token.py` secure and never commit to version control
 - **System Access**: The assistant requires system-level permissions for power control and D-Bus access
 
 ## Notes
 
 - The assistant is designed specifically for Spanish language commands and responses
-- CUDA support is enabled for Whisper AI for better performance [2](#0-1) 
-- WhatsApp functionality may be limited due to automation detection [29](#0-28) 
+- CUDA support is enabled for Whisper AI for better performance
+- WhatsApp functionality may be limited due to automation detection
 - Phone integration requires a Bluetooth-connected phone with HFP profile support
-- The system uses fuzzy string matching for command recognition [30](#0-29) 
+- The system uses fuzzy string matching for command recognition
